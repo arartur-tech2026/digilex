@@ -857,7 +857,7 @@
       <div class="modal-actions">
         <button class="btn-screenshot" id="btn-make-screenshot">
           <svg><use href="#icon-camera"></use></svg>
-          Сделать скриншот (PNG)
+          Сделать скриншот (PNG 3:4)
         </button>
         <div class="btn-secondary-group">
           <button class="btn-secondary" id="btn-restart-trainer">Пройти заново</button>
@@ -1012,7 +1012,6 @@
       return 1;
     }
 
-    // Присвоение ID с 1 (защита от бага нуля) и привязка к 4 разделам
     const database = rawData.map((item, index) => {
       let defText = item.def.replace(/—/g, '–');
       defText = defText.replace(/:\s*([А-ЯЁ])/g, (m, p1) => ': ' + p1.toLowerCase());
@@ -1182,14 +1181,12 @@
       } catch (e) {}
     }
 
-    // Блокировка системного скролла вне разрешенных зон
     document.addEventListener('touchmove', (e) => {
       if (!e.target.closest('.card-content') && !e.target.closest('.tabs-row') && !e.target.closest('.result-dialog')) {
         e.preventDefault();
       }
     }, { passive: false });
 
-    // Клик по кнопке «Начать изучение» – запуск звука, таймера и открытие колоды
     document.getElementById('btn-start').addEventListener('click', () => {
       initAudio();
       requestFullScreenSafe();
@@ -1264,7 +1261,6 @@
       if (countToLearnEl) countToLearnEl.textContent = toLearn;
       if (countLearnedEl) countLearnedEl.textContent = learned;
 
-      // Проверка полного завершения
       if (learnedIds.size === database.length && !isSessionCompleted && database.length > 0) {
         finishSession();
       }
@@ -1305,9 +1301,7 @@
         return passSection && passStatus;
       });
 
-      // Перемешиваем колоду в случайном порядке
       deck.sort(() => Math.random() - 0.5);
-
       nextCard();
     }
 
@@ -1597,37 +1591,44 @@
       }
     }
 
+    // --- ГЕНЕРАТОР СКРИНШОТА СТРОГО В ВЕРТИКАЛЬНОМ СООТНОШЕНИИ СТОРОН 3:4 ---
     function generateAndDownloadScreenshot() {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
 
-      const width = 1100;
-      const height = 750;
+      // Точные размеры под вертикальные экраны и мобильное соотношение сторон 3:4 (1080 x 1440)
+      const width = 1080;
+      const height = 1440;
       canvas.width = width;
       canvas.height = height;
 
       const isDark = currentTheme === 'dark';
+      
+      // Фоновый градиент холста
       const bgGrad = ctx.createLinearGradient(0, 0, width, height);
       if (isDark) {
-        bgGrad.addColorStop(0, '#0f172a');
+        bgGrad.addColorStop(0, '#0a0f1d');
+        bgGrad.addColorStop(0.5, '#0f172a');
         bgGrad.addColorStop(1, '#1e293b');
       } else {
-        bgGrad.addColorStop(0, '#f8fafc');
+        bgGrad.addColorStop(0, '#f1f5f9');
+        bgGrad.addColorStop(0.5, '#f8fafc');
         bgGrad.addColorStop(1, '#e2e8f0');
       }
       ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, width, height);
 
-      const cardX = 50;
-      const cardY = 50;
-      const cardW = width - 100;
-      const cardH = height - 100;
-      const radius = 28;
+      // Карточка сертификата
+      const cardX = 54;
+      const cardY = 60;
+      const cardW = width - 108; // 972
+      const cardH = height - 120; // 1320
+      const radius = 36;
 
       ctx.save();
-      ctx.shadowColor = isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.12)';
-      ctx.shadowBlur = 30;
-      ctx.shadowOffsetY = 15;
+      ctx.shadowColor = isDark ? 'rgba(0, 0, 0, 0.65)' : 'rgba(15, 23, 42, 0.12)';
+      ctx.shadowBlur = 36;
+      ctx.shadowOffsetY = 18;
       
       ctx.fillStyle = isDark ? '#1e293b' : '#ffffff';
       roundRect(ctx, cardX, cardY, cardW, cardH, radius, true, false);
@@ -1637,73 +1638,135 @@
       ctx.lineWidth = 3;
       roundRect(ctx, cardX, cardY, cardW, cardH, radius, false, true);
 
+      // Верхняя акцентная планка
       const accentGrad = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY);
       accentGrad.addColorStop(0, '#2563eb');
       accentGrad.addColorStop(0.5, '#3b82f6');
       accentGrad.addColorStop(1, '#10b981');
       ctx.fillStyle = accentGrad;
-      roundRectTop(ctx, cardX, cardY, cardW, 10, radius);
+      roundRectTop(ctx, cardX, cardY, cardW, 14, radius);
 
+      // Золотая медаль / кубок вверху
+      const badgeCenterX = width / 2;
+      const badgeCenterY = 190;
+      const badgeRadius = 48;
+
+      ctx.save();
+      ctx.shadowColor = 'rgba(245, 158, 11, 0.45)';
+      ctx.shadowBlur = 24;
+      ctx.shadowOffsetY = 8;
+      const goldGrad = ctx.createLinearGradient(badgeCenterX - badgeRadius, badgeCenterY - badgeRadius, badgeCenterX + badgeRadius, badgeCenterY + badgeRadius);
+      goldGrad.addColorStop(0, '#fbbf24');
+      goldGrad.addColorStop(1, '#d97706');
+      ctx.fillStyle = goldGrad;
+      ctx.beginPath();
+      ctx.arc(badgeCenterX, badgeCenterY, badgeRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Звезда внутри медали
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 44px system-ui, -apple-system, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillStyle = '#2563eb';
-      ctx.font = 'bold 22px system-ui, -apple-system, sans-serif';
-      ctx.fillText('СЕРТИФИКАТ ОСВОЕНИЯ ТРЕНАЖЕРА', width / 2, 130);
+      ctx.fillText('★', badgeCenterX, badgeCenterY + 15);
+
+      // Надписи заголовка
+      ctx.textAlign = 'center';
+      ctx.fillStyle = isDark ? '#60a5fa' : '#2563eb';
+      ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
+      ctx.fillText('СЕРТИФИКАТ ОСВОЕНИЯ ТРЕНАЖЕРА', width / 2, 285);
 
       ctx.fillStyle = isDark ? '#f8fafc' : '#0f172a';
-      ctx.font = '800 38px system-ui, -apple-system, sans-serif';
-      ctx.fillText('ЦИФРОВОЕ ПРАВО И КИБЕРБЕЗОПАСНОСТЬ', width / 2, 185);
+      ctx.font = '800 44px system-ui, -apple-system, sans-serif';
+      ctx.fillText('ЦИФРОВОЕ ПРАВО', width / 2, 350);
+      ctx.fillText('И КИБЕРБЕЗОПАСНОСТЬ', width / 2, 408);
 
       ctx.fillStyle = isDark ? '#94a3b8' : '#64748b';
-      ctx.font = '600 20px system-ui, -apple-system, sans-serif';
-      ctx.fillText('Все правовые понятия и нормы успешно выучены на 100%', width / 2, 225);
+      ctx.font = '600 22px system-ui, -apple-system, sans-serif';
+      ctx.fillText('Все правовые понятия и нормы успешно выучены на 100%', width / 2, 465);
 
+      // Зеленый бейдж 100% ОСВОЕНО
+      const pillW = 320;
+      const pillH = 52;
+      const pillX = width / 2 - pillW / 2;
+      const pillY = 505;
       ctx.fillStyle = '#10b981';
-      roundRect(ctx, width / 2 - 130, 255, 260, 46, 23, true, false);
+      roundRect(ctx, pillX, pillY, pillW, pillH, 26, true, false);
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 20px system-ui, -apple-system, sans-serif';
-      ctx.fillText('★ 100% ОСВОЕНО ★', width / 2, 286);
+      ctx.font = 'bold 22px system-ui, -apple-system, sans-serif';
+      ctx.fillText('★ 100% ОСВОЕНО ★', width / 2, pillY + 34);
 
-      const boxX = 110;
-      const boxY = 330;
-      const boxW = width - 220;
-      const boxH = 250;
+      // Контейнер статистики
+      const boxX = 114;
+      const boxY = 600;
+      const boxW = width - 228; // 852
+      const boxH = 480;
 
       ctx.fillStyle = isDark ? '#0f172a' : '#f8fafc';
-      roundRect(ctx, boxX, boxY, boxW, boxH, 18, true, false);
+      roundRect(ctx, boxX, boxY, boxW, boxH, 24, true, false);
       ctx.strokeStyle = isDark ? '#334155' : '#e2e8f0';
       ctx.lineWidth = 1.5;
-      roundRect(ctx, boxX, boxY, boxW, boxH, 18, false, true);
+      roundRect(ctx, boxX, boxY, boxW, boxH, 24, false, true);
 
       const stats = [
-        { label: '⏱ Затраченное время:', value: formatTime(elapsedSeconds), isAccent: true },
-        { label: '✓ Изучено понятий:', value: `${learnedIds.size} из ${database.length} (100%)`, isAccent: false },
-        { label: '📅 Дата и время начала:', value: formatDateTime(sessionStartTime), isAccent: false },
-        { label: '🏁 Дата и время окончания:', value: formatDateTime(sessionFinishTime), isAccent: false }
+        { label: '⏱  Затраченное время:', value: formatTime(elapsedSeconds), isAccent: true },
+        { label: '✓  Изучено понятий:', value: `${learnedIds.size} из ${database.length} (100%)`, isAccent: false },
+        { label: '📅  Дата и время начала:', value: formatDateTime(sessionStartTime), isAccent: false },
+        { label: '🏁  Дата и время окончания:', value: formatDateTime(sessionFinishTime), isAccent: false }
       ];
 
-      ctx.font = '600 20px system-ui, -apple-system, sans-serif';
-      let rowY = 385;
-      stats.forEach((item) => {
+      let rowY = 675;
+      stats.forEach((item, index) => {
+        // Лейбл слева
         ctx.textAlign = 'left';
         ctx.fillStyle = isDark ? '#94a3b8' : '#64748b';
-        ctx.fillText(item.label, boxX + 35, rowY);
+        ctx.font = '600 24px system-ui, -apple-system, sans-serif';
+        ctx.fillText(item.label, boxX + 40, rowY);
 
+        // Значение справа
         ctx.textAlign = 'right';
-        ctx.fillStyle = item.isAccent ? '#2563eb' : (isDark ? '#f8fafc' : '#0f172a');
-        ctx.font = item.isAccent ? 'bold 22px system-ui, -apple-system, sans-serif' : '700 20px system-ui, -apple-system, sans-serif';
-        ctx.fillText(item.value, boxX + boxW - 35, rowY);
+        ctx.fillStyle = item.isAccent ? (isDark ? '#60a5fa' : '#2563eb') : (isDark ? '#f8fafc' : '#0f172a');
+        ctx.font = item.isAccent ? 'bold 30px system-ui, -apple-system, sans-serif' : '700 24px system-ui, -apple-system, sans-serif';
+        ctx.fillText(item.value, boxX + boxW - 40, rowY);
 
-        ctx.font = '600 20px system-ui, -apple-system, sans-serif';
-        rowY += 50;
+        // Разделительная линия между строками
+        if (index < stats.length - 1) {
+          ctx.strokeStyle = isDark ? '#1e293b' : '#e2e8f0';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(boxX + 35, rowY + 38);
+          ctx.lineTo(boxX + boxW - 35, rowY + 38);
+          ctx.stroke();
+        }
+
+        rowY += 105;
       });
 
-      ctx.textAlign = 'center';
-      ctx.fillStyle = isDark ? '#64748b' : '#94a3b8';
-      ctx.font = '500 16px system-ui, -apple-system, sans-serif';
-      ctx.fillText('Интерактивный образовательный тренажер цифровых компетенций • Режим полной проверки', width / 2, 635);
+      // Бейдж верификации
+      const sealW = 460;
+      const sealH = 46;
+      const sealX = width / 2 - sealW / 2;
+      const sealY = 1130;
+      ctx.fillStyle = isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(37, 99, 235, 0.08)';
+      roundRect(ctx, sealX, sealY, sealW, sealH, 14, true, false);
+      ctx.strokeStyle = isDark ? 'rgba(59, 130, 246, 0.35)' : 'rgba(37, 99, 235, 0.2)';
+      ctx.lineWidth = 1;
+      roundRect(ctx, sealX, sealY, sealW, sealH, 14, false, true);
 
+      ctx.textAlign = 'center';
+      ctx.fillStyle = isDark ? '#93c5fd' : '#1d4ed8';
+      ctx.font = '700 18px system-ui, -apple-system, sans-serif';
+      ctx.fillText('РЕЗУЛЬТАТ ВЕРИФИЦИРОВАН СИСТЕМОЙ', width / 2, sealY + 29);
+
+      // Подвал сертификата
+      ctx.fillStyle = isDark ? '#64748b' : '#94a3b8';
+      ctx.font = '500 18px system-ui, -apple-system, sans-serif';
+      ctx.fillText('Интерактивный образовательный тренажер цифровых компетенций', width / 2, 1250);
+      ctx.fillText('Режим полной проверки знаний • Вертикальный сертификат (3:4)', width / 2, 1285);
+
+      // Скачивание PNG
       const downloadLink = document.createElement('a');
-      downloadLink.download = `Цифровое_право_Результат_${formatTime(elapsedSeconds).replace(':', '-')}.png`;
+      downloadLink.download = `Цифровое_право_Сертификат_3x4_${formatTime(elapsedSeconds).replace(':', '-')}.png`;
       downloadLink.href = canvas.toDataURL('image/png');
       document.body.appendChild(downloadLink);
       downloadLink.click();
